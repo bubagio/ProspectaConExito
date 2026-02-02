@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Admin - Gestor de Encuestas</title>
+    <link rel="stylesheet" href="/src/style.css">
+    <style>
+        body {
+            padding-top: 100px;
+            background: #f0f4f8;
+        }
+
+        .admin-container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-section {
+            margin-bottom: 2rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        .role-list {
+            list-style: none;
+            margin-top: 1rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+        }
+
+        .role-item {
+            padding: 0.8rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f8fafc;
+        }
+
+        .link-box {
+            margin-top: 1.5rem;
+            padding: 1.5rem;
+            background: #f0f9ff;
+            border: 1px solid #bde0fe;
+            border-radius: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        select,
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        .delete-btn {
+            color: #ef4444;
+            cursor: pointer;
+            font-size: 1.2rem;
+            font-weight: bold;
+            padding: 0 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="container nav-container">
+            <a href="/" class="brand-logo">
+                <img src="/logo.jpg" alt="Logo" class="nav-logo">
+                <span>Admin Panel</span>
+            </a>
+            <a href="/dashboard.html" class="btn btn-outline"
+                style="color:var(--primary-color); border-color: var(--primary-color);">Ver Dashboard</a>
+        </div>
+    </nav>
+
+    <div class="container admin-container">
+        <h2>Generador de Enlaces</h2>
+        <p>Selecciona una encuesta y un rol para generar el link único.</p>
+
+        <div class="card-section">
+            <div class="form-group">
+                <label>1. Selecciona la Encuesta</label>
+                <select id="surveySelect">
+                    <!-- Populated by JS -->
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>2. Selecciona el Rol</label>
+                <select id="roleSelect">
+                    <!-- Populated by JS -->
+                </select>
+            </div>
+
+            <button onclick="generateLink()" class="btn btn-primary" style="width:100%">Generar Link</button>
+
+            <div id="resultBox" class="link-box" style="display:none;">
+                <strong>Link Generado:</strong>
+                <p id="generatedUrl" style="word-break: break-all; color: var(--secondary-color); margin: 0.5rem 0;">...
+                </p>
+                <button onclick="copyLink()" class="btn btn-outline sm">Copiar</button>
+            </div>
+        </div>
+
+        <h3>Gestión de Roles</h3>
+        <div class="input-group" style="display:flex; gap:10px; margin-bottom:1rem;">
+            <input type="text" id="newRoleName" placeholder="Nuevo Rol (ej. Sales Manager)">
+            <button onclick="createRole()" class="btn btn-primary">Añadir</button>
+        </div>
+
+        <ul id="rolesList" class="role-list">
+            <!-- Roles here -->
+        </ul>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000/api';
+
+        async function init() {
+            await loadSurveys();
+            await loadRoles();
+        }
+
+        async function loadSurveys() {
+            const res = await fetch(`${API_URL}/surveys`);
+            const surveys = await res.json();
+            const select = document.getElementById('surveySelect');
+            select.innerHTML = surveys.map(s => `<option value="${s.id}">${s.title}</option>`).join('');
+        }
+
+        async function loadRoles() {
+            const res = await fetch(`${API_URL}/roles`);
+            const roles = await res.json();
+            const select = document.getElementById('roleSelect');
+            const list = document.getElementById('rolesList');
+
+            select.innerHTML = roles.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+
+            list.innerHTML = roles.map(r => `
+        <li class="role-item">
+          <span>${r.name}</span>
+          <span class="delete-btn" onclick="deleteRole(${r.id})" title="Eliminar">&times;</span>
+        </li>
+      `).join('');
+        }
+
+        async function createRole() {
+            const name = document.getElementById('newRoleName').value;
+            if (!name) return;
+            await fetch(`${API_URL}/roles`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name })
+            });
+            document.getElementById('newRoleName').value = '';
+            loadRoles();
+        }
+
+        async function deleteRole(id) {
+            if (!confirm('¿Seguro que quieres eliminar este rol? Los reportes antiguos se mantendrán.')) return;
+            await fetch(`${API_URL}/roles/${id}`, { method: 'DELETE' });
+            loadRoles();
+        }
+
+        function generateLink() {
+            const surveyId = document.getElementById('surveySelect').value;
+            const roleId = document.getElementById('roleSelect').value;
+            const url = `${window.location.origin}/survey.html?s=${surveyId}&r=${roleId}`;
+
+            document.getElementById('generatedUrl').textContent = url;
+            document.getElementById('resultBox').style.display = 'block';
+        }
+
+        function copyLink() {
+            const text = document.getElementById('generatedUrl').textContent;
+            navigator.clipboard.writeText(text);
+            alert('Link copiado!');
+        }
+
+        init();
+    </script>
+</body>
+
+</html>
