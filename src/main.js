@@ -138,7 +138,7 @@ document.querySelectorAll('[data-count]').forEach(el => {
   const grid = document.getElementById('homeArticlesGrid');
   if (!grid) return; // not on home page
   try {
-    const res = await fetch('/api/articles?limit=3');
+    const res = await fetch('https://prospectaexistov2-production.up.railway.app/api/articles?limit=3');
     const articles = await res.json();
     if (!articles || !articles.length) return;
     grid.innerHTML = articles.map((a, i) => `
