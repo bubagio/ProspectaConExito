@@ -27,6 +27,16 @@
     .admin-nav .brand-logo span { color:white; }
     .nav-admin-actions { display:flex; gap:0.75rem; align-items:center; }
     .nav-admin-actions span { color:rgba(255,255,255,0.7); font-size:0.85rem; }
+    .nav-admin-actions .btn {
+      color: rgba(255,255,255,0.9) !important;
+      border-color: rgba(255,255,255,0.35) !important;
+      background: rgba(255,255,255,0.08);
+    }
+    .nav-admin-actions .btn:hover {
+      background: rgba(255,255,255,0.18) !important;
+      border-color: rgba(255,255,255,0.6) !important;
+      color: #fff !important;
+    }
 
     /* ── Layout ── */
     .admin-layout {
@@ -377,6 +387,7 @@
       <div class="admin-card" id="section-encuestas">
         <div class="admin-card-header">
           <h2>📋 Generador de Enlaces de Encuesta</h2>
+          <a href="/surveys-editor.html" class="btn btn-primary" style="font-size:.82rem;padding:.5rem 1rem;text-decoration:none">⚙️ Gestionar encuestas y preguntas</a>
         </div>
         <p style="color:var(--text-muted);margin-bottom:1.5rem">Selecciona una encuesta y un rol para generar el link único.</p>
 

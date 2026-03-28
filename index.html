@@ -31,7 +31,7 @@
       <ul class="nav-links">
         <li><a href="#mision">Misión</a></li>
         <li><a href="#servicios">Servicios</a></li>
-        <li><a href="/recursos.html">Recursos</a></li>
+        <li><a href="#recursos" id="nav-recursos-link">Recursos</a></li>
         <li id="nav-auth-home"><a href="/login.html" class="btn btn-primary sm">Entrar</a></li>
       </ul>
     </div>
@@ -313,40 +313,6 @@
   </div>
 
   <script type="module" src="/src/main.js"></script>
-  <script>
-    // Dynamic articles on home
-    fetch('http://localhost:3000/api/articles?limit=3')
-      .then(r => r.json())
-      .then(articles => {
-        if (!articles || !articles.length) return;
-        const grid = document.getElementById('homeArticlesGrid');
-        grid.innerHTML = articles.map((a, i) => `
-          <article class="resource-card fade-in ${i > 0 ? 'delay-' + Math.min(i,3) : ''}">
-            <div class="card-content">
-              <span class="tag">${a.category || 'Blog'}</span>
-              <h3>${a.title}</h3>
-              ${a.excerpt ? `<p style="color:rgba(255,255,255,0.65);font-size:0.88rem;line-height:1.5;margin:0.5rem 0">${a.excerpt}</p>` : ''}
-              <a href="/recursos.html#article-${a.id}" class="read-more">Leer más &rarr;</a>
-            </div>
-          </article>
-        `).join('');
-        // Re-observe for animations
-        document.querySelectorAll('.fade-in:not(.visible)').forEach(el => {
-          if (typeof observer !== 'undefined') observer.observe(el);
-        });
-      })
-      .catch(() => {}); // fail silently, static fallback remains
-
-    // Nav auth state
-    const homeUser = JSON.parse(localStorage.getItem('pce_user') || 'null');
-    const navAuthHome = document.getElementById('nav-auth-home');
-    if (homeUser && navAuthHome) {
-      const isPrivileged = homeUser.role === 'admin' || homeUser.role === 'superadmin';
-      navAuthHome.innerHTML = isPrivileged
-        ? `<a href="/admin.html" class="btn btn-primary sm">Admin</a>`
-        : `<a href="/recursos.html" class="btn btn-primary sm">Mi área</a>`;
-    }
-  </script>
 </body>
 
 </html>

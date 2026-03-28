@@ -28,7 +28,16 @@ const storage = multer.diskStorage({
 const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 
 // ── Middleware ───────────────────────────────────────────────────
-app.use(cors({ origin: [FRONTEND_URL, 'http://localhost:3000'], credentials: true }));
+app.use(cors({
+  origin: [
+    FRONTEND_URL,
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'https://www.prospectaconexito.com',
+    'https://prospectaconexito.com'
+  ],
+  credentials: true
+}));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, '../dist')));
 app.use('/uploads', express.static(uploadDir));
@@ -360,6 +369,87 @@ app.delete('/api/admin/articles/:id', adminMiddleware, (req, res) => {
 app.post('/api/admin/upload', adminMiddleware, upload.single('image'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
   res.json({ url: `/uploads/${req.file.filename}` });
+});
+
+// ── SURVEY MANAGEMENT (admin) ─────────────────────────────────────
+
+// Crea nuova encuesta
+app.post('/api/admin/surveys', adminMiddleware, (req, res) => {
+  const { title, description } = req.body;
+  if (!title) return res.status(400).json({ error: 'Title required' });
+  db.run('INSERT INTO surveys (title, description) VALUES (?, ?)', [title, description || ''], function (err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ id: this.lastID, title, description });
+  });
+});
+
+// Aggiorna encuesta
+app.put('/api/admin/surveys/:id', adminMiddleware, (req, res) => {
+  const { title, description } = req.body;
+  db.run('UPDATE surveys SET title=?, description=? WHERE id=?', [title, description || '', req.params.id], function (err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ success: true });
+  });
+});
+
+// Elimina encuesta (e tutte le sue domande)
+app.delete('/api/admin/surveys/:id', adminMiddleware, (req, res) => {
+  db.run('DELETE FROM questions WHERE survey_id=?', [req.params.id], (err) => {
+    if (err) return res.status(500).json({ error: err.message });
+    db.run('DELETE FROM surveys WHERE id=?', [req.params.id], function (err2) {
+      if (err2) return res.status(500).json({ error: err2.message });
+      res.json({ success: true });
+    });
+  });
+});
+
+// Aggiungi domanda a una encuesta
+app.post('/api/admin/surveys/:id/questions', adminMiddleware, (req, res) => {
+  const { text, type, options, category } = req.body;
+  if (!text) return res.status(400).json({ error: 'Question text required' });
+  const optionsJson = JSON.stringify(options || []);
+  db.get('SELECT MAX(order_num) as maxOrder FROM questions WHERE survey_id=?', [req.params.id], (err, row) => {
+    const nextOrder = (row?.maxOrder || 0) + 1;
+    db.run(
+      'INSERT INTO questions (survey_id, text, type, options, category, order_num) VALUES (?,?,?,?,?,?)',
+      [req.params.id, text, type || 'radio', optionsJson, category || '', nextOrder],
+      function (err2) {
+        if (err2) return res.status(500).json({ error: err2.message });
+        res.json({ id: this.lastID, text, type, options: options || [], category, order_num: nextOrder });
+      }
+    );
+  });
+});
+
+// Aggiorna domanda
+app.put('/api/admin/questions/:id', adminMiddleware, (req, res) => {
+  const { text, type, options, category, order_num } = req.body;
+  const optionsJson = JSON.stringify(options || []);
+  db.run(
+    'UPDATE questions SET text=?, type=?, options=?, category=?, order_num=? WHERE id=?',
+    [text, type || 'radio', optionsJson, category || '', order_num, req.params.id],
+    function (err) {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ success: true });
+    }
+  );
+});
+
+// Elimina domanda
+app.delete('/api/admin/questions/:id', adminMiddleware, (req, res) => {
+  db.run('DELETE FROM questions WHERE id=?', [req.params.id], function (err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ success: true });
+  });
+});
+
+// Riordina domande (riceve array [{id, order_num}])
+app.put('/api/admin/surveys/:id/questions/reorder', adminMiddleware, (req, res) => {
+  const { order } = req.body; // [{id:1, order_num:1}, ...]
+  if (!Array.isArray(order)) return res.status(400).json({ error: 'order array required' });
+  const stmt = db.prepare('UPDATE questions SET order_num=? WHERE id=?');
+  order.forEach(({ id, order_num }) => stmt.run(order_num, id));
+  stmt.finalize(() => res.json({ success: true }));
 });
 
 // ── EXISTING ROUTES (surveys, roles, responses, reports) ─────────

@@ -344,11 +344,13 @@
         allArticles = await res.json();
         renderList(allArticles);
 
-        // Auto-open from URL hash
+        // Auto-open from URL hash, or open the most recent article
         const hash = window.location.hash;
         if (hash && hash.startsWith('#article-')) {
           const id = parseInt(hash.replace('#article-', ''));
           openArticle(id);
+        } else if (allArticles.length > 0) {
+          openArticle(allArticles[0].id);
         }
       } catch {
         document.getElementById('articleList').innerHTML = '<p class="sidebar-empty">Error cargando artículos</p>';
@@ -433,7 +435,7 @@
     if (user) {
       navAuth.innerHTML = `
         <span style="color:var(--primary);font-weight:600;font-size:0.9rem">Hola, ${user.name || user.email}</span>
-        ${user.role === 'admin' ? '<a href="/admin.html" class="btn btn-primary sm" style="margin-left:0.5rem">Admin</a>' : ''}
+        ${(user.role === 'admin' || user.role === 'superadmin') ? '<a href="/admin.html" class="btn btn-primary sm" style="margin-left:0.5rem">Admin</a>' : ''}
         <button onclick="logout()" class="btn sm" style="background:none;border:1px solid rgba(27,59,90,0.2);color:var(--primary);cursor:pointer;margin-left:0.5rem">Salir</button>
       `;
     } else {
