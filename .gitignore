@@ -1,8 +1,8 @@
 # Dependencies
 node_modules/
 
-# Production build
-dist/
+# Production build — incluso in repo per Railway
+# dist/
 
 # Local Environment & Database
 .env

@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Encuesta - Prospecta con Éxito</title>
+    <style>
+        body {
+            padding-top: 80px;
+            background: #f8fafc;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .survey-container {
+            max-width: 700px;
+            margin: 2rem auto;
+            background: white;
+            padding: 3rem;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+            flex: 1;
+        }
+
+        .question-card {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .question-card.active {
+            display: block;
+        }
+
+        .question-title {
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+        }
+
+        .option-btn {
+            display: block;
+            width: 100%;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            background: white;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 1.1rem;
+            color: var(--text-color);
+        }
+
+        .option-btn:hover {
+            border-color: var(--secondary-color);
+            background: #f0f9ff;
+        }
+
+        .option-btn.selected {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        .progress-bar {
+            height: 6px;
+            background: #e2e8f0;
+            margin-bottom: 2rem;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--secondary-color);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .nav-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 2rem;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+  <link rel="stylesheet" crossorigin href="/assets/style-Cw1rpqV9.css">
+</head>
+
+<body>
+    <nav class="navbar" style="position: sticky;">
+        <div class="container nav-container">
+            <div class="brand-logo">
+                <img src="/logo.jpg" alt="Logo" class="nav-logo" style="height: 50px;">
+                <span style="font-size: 1.2rem;">Prospecta con Éxito</span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="survey-container" id="surveyBox">
+            <h2 id="surveyTitle" style="margin-bottom: 1rem; font-size: 1.2rem; color: #666;">Cargando...</h2>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress"></div>
+            </div>
+
+            <div id="questionsWrapper"></div>
+
+            <div class="nav-buttons">
+                <button id="prevBtn" class="btn btn-outline"
+                    style="color: grey; border-color: grey; visibility: hidden;">Anterior</button>
+            </div>
+        </div>
+
+        <div id="thankYou" class="survey-container text-center" style="display: none;">
+            <h2>¡Gracias por tus respuestas!</h2>
+            <p>Tus aportes son muy valiosos para mejorar las estrategias de prospección.</p>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000/api';
+        const urlParams = new URLSearchParams(window.location.search);
+        // Support new params s (survey) and r (role), fallback to old logic if needed
+        const surveyId = urlParams.get('s') || '1'; // Default to ID 1 if missing
+        const roleId = urlParams.get('r') || urlParams.get('role'); // Handle both new and old param
+
+        let questions = [];
+        let currentStep = 0;
+        let answers = {};
+
+        if (!roleId) {
+            document.body.innerHTML = '<div class="container" style="padding-top:100px; text-align:center;"><h1>Enlace incompleto. Falta el Rol.</h1></div>';
+        } else {
+            initSurvey();
+        }
+
+        async function initSurvey() {
+            // Fetch specific survey
+            const res = await fetch(`${API_URL}/surveys/${surveyId}`);
+            if (!res.ok) {
+                document.getElementById('surveyBox').innerHTML = '<h2>Encuesta no encontrada.</h2>';
+                return;
+            }
+
+            const data = await res.json();
+            questions = data.questions;
+            document.getElementById('surveyTitle').innerText = data.title;
+
+            if (questions.length === 0) {
+                document.getElementById('questionsWrapper').innerHTML = '<p>Esta encuesta no tiene preguntas aún.</p>';
+                return;
+            }
+
+            renderQuestions();
+            updateProgress();
+        }
+
+        function renderQuestions() {
+            const wrapper = document.getElementById('questionsWrapper');
+            wrapper.innerHTML = questions.map((q, index) => `
+        <div class="question-card ${index === 0 ? 'active' : ''}" data-index="${index}">
+          <div class="question-title">${q.text}</div>
+          <div class="options-list">
+            ${q.options.map(opt => `
+              <button class="option-btn" onclick="selectOption(${index}, '${opt}', this)">${opt}</button>
+            `).join('')}
+             ${q.options.includes('Otro') || q.options.includes('Otro: ______') ?
+                    `<input type="text" placeholder="Especifique otro..." class="option-btn" onchange="selectOption(${index}, this.value, this)" style="cursor:text;">` : ''}
+          </div>
+        </div>
+      `).join('');
+
+            document.getElementById('prevBtn').onclick = prevStep;
+        }
+
+        function selectOption(qIndex, value, btnElement) {
+            answers[questions[qIndex].id] = value;
+            const parent = btnElement.parentElement;
+            if (btnElement.tagName === 'BUTTON') {
+                Array.from(parent.children).forEach(c => c.classList.remove('selected'));
+                btnElement.classList.add('selected');
+            }
+            setTimeout(() => { nextStep(); }, 400);
+        }
+
+        function nextStep() {
+            if (currentStep < questions.length - 1) {
+                document.querySelector(`.question-card[data-index="${currentStep}"]`).classList.remove('active');
+                currentStep++;
+                document.querySelector(`.question-card[data-index="${currentStep}"]`).classList.add('active');
+                updateProgress();
+                document.getElementById('prevBtn').style.visibility = 'visible';
+            } else {
+                submitSurvey();
+            }
+        }
+
+        function prevStep() {
+            if (currentStep > 0) {
+                document.querySelector(`.question-card[data-index="${currentStep}"]`).classList.remove('active');
+                currentStep--;
+                document.querySelector(`.question-card[data-index="${currentStep}"]`).classList.add('active');
+                updateProgress();
+                if (currentStep === 0) document.getElementById('prevBtn').style.visibility = 'hidden';
+            }
+        }
+
+        function updateProgress() {
+            const pct = ((currentStep + 1) / questions.length) * 100;
+            document.getElementById('progress').style.width = `${pct}%`;
+        }
+
+        async function submitSurvey() {
+            await fetch(`${API_URL}/responses`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ surveyId, roleId, answers })
+            });
+            document.getElementById('surveyBox').style.display = 'none';
+            document.getElementById('thankYou').style.display = 'block';
+        }
+    </script>
+</body>
+
+</html>
