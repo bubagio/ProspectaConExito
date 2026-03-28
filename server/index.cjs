@@ -112,6 +112,88 @@ function createTables() {
     )`);
 
     console.log('All tables ready.');
+    autoSeed();
+  });
+}
+
+// ── Auto-seed (solo se DB è vuoto) ───────────────────────────────
+async function autoSeed() {
+  const bcrypt = require('bcryptjs');
+
+  // 1. Superadmin
+  db.get('SELECT id FROM users WHERE email = ?', ['baraccoy@gmail.com'], async (err, existing) => {
+    if (err || existing) return; // già esiste, skip
+    const hash = await bcrypt.hash('12345buba88', 12);
+    db.run(
+      `INSERT INTO users (email, password, name, role, gdpr_consent, gdpr_date)
+       VALUES (?, ?, ?, 'superadmin', 1, CURRENT_TIMESTAMP)`,
+      ['baraccoy@gmail.com', hash, 'Fernando Baccari'],
+      function(e) {
+        if (e) return console.error('Seed superadmin error:', e.message);
+        console.log('✅ Superadmin auto-seeded (id:', this.lastID, ')');
+        seedArticles(this.lastID); // seed articoli dopo aver creato l'utente
+      }
+    );
+  });
+
+  // 2. Articoli (solo se non ce ne sono già)
+  db.get('SELECT COUNT(*) as n FROM articles', [], (err, row) => {
+    if (err || row.n > 0) return; // già ci sono articoli
+    db.get('SELECT id FROM users WHERE email = ?', ['baraccoy@gmail.com'], (e2, author) => {
+      if (e2 || !author) return; // aspetta che il superadmin esista
+      seedArticles(author.id);
+    });
+  });
+}
+
+function seedArticles(authorId) {
+  // Controlla se ci sono già articoli per evitare duplicati
+  db.get('SELECT COUNT(*) as n FROM articles', [], (err, row) => {
+    if (err || row.n > 0) return;
+
+    const articles = [
+      {
+        title: 'Cómo hacer prospección B2B efectiva en 2026',
+        category: 'Guía',
+        excerpt: 'El mercado está saturado y los decisores ya no responden al volumen. Descubre cómo construir un sistema de prospección B2B que genera pipeline de forma predecible.',
+        cover_image: '/uploads/b2b_prospecting_2026.png',
+        content: '<h2>Introducción</h2><p>La prospección B2B en 2026 ya no funciona con volumen. El mercado está saturado: los decisores reciben decenas de mensajes al día y su atención es un recurso escaso. Quien sigue enviando mensajes genéricos en masa no solo no obtiene respuestas, sino que daña su reputación comercial.</p><h2>Cómo estructurar una prospección efectiva</h2><p>Define tu ICP, construye listas cualificadas, diseña una cadencia multicanal y personaliza de forma escalable. Mide y ajusta constantemente.</p><h2>Conclusión</h2><p>La prospección B2B efectiva en 2026 no es una cuestión de volumen, sino de sistema.</p>'
+      },
+      {
+        title: 'Prospección en LinkedIn: guía completa para 2026',
+        category: 'Guía',
+        excerpt: 'LinkedIn es el canal B2B más potente hoy en día. Pero su saturación obliga a cambiar el enfoque.',
+        cover_image: '/uploads/linkedin_prospecting.png',
+        content: '<h2>Introducción</h2><p>LinkedIn se ha convertido en el canal de referencia para la prospección B2B. Sin embargo, su popularidad también ha generado saturación.</p><h2>Estrategia de contacto</h2><p>Interactúa antes de contactar. Personaliza cada mensaje. Aporta valor antes de pedir algo.</p><h2>Conclusión</h2><p>LinkedIn no es un canal de volumen. Es un canal de precisión.</p>'
+      },
+      {
+        title: 'Cómo escribir emails en frío que generan respuestas',
+        category: 'Blog',
+        excerpt: 'El email sigue siendo uno de los canales más efectivos en prospección B2B. Pero el 90% falla por los mismos motivos.',
+        cover_image: '/uploads/cold_email.png',
+        content: '<h2>Introducción</h2><p>El email frío tiene mala reputación, y en muchos casos merecida. La mayoría son largos, genéricos y centrados en quien los envía.</p><h2>Las claves</h2><p>Asunto específico, personalización real, brevedad y CTA simple de bajo compromiso.</p><h2>Conclusión</h2><p>Un buen email frío genera curiosidad. No vende directamente, abre una puerta.</p>'
+      },
+      {
+        title: 'Cadencia de prospección: cómo estructurar tu outreach',
+        category: 'Estrategia',
+        excerpt: 'Una acción aislada no es prospección. La cadencia convierte contactos esporádicos en oportunidades consistentes.',
+        cover_image: '/uploads/cadencia.png',
+        content: '<h2>Introducción</h2><p>La mayoría de los equipos comerciales prospectan de forma reactiva. La cadencia de prospección es la solución.</p><h2>Ejemplo cadencia 10 días</h2><p>Día 1: LinkedIn. Día 3: mensaje. Día 5: email. Día 7: llamada. Día 10: breakup email.</p><h2>Conclusión</h2><p>Sin cadencia no hay sistema. Sin sistema no hay resultados predecibles.</p>'
+      },
+      {
+        title: 'El rol del SDR en 2026: más estratégico, menos operativo',
+        category: 'Blog',
+        excerpt: 'La automatización ha cambiado el rol del SDR para siempre. Lo que queda es más exigente, más valioso y más humano.',
+        cover_image: '/uploads/sdr_2026.png',
+        content: '<h2>Introducción</h2><p>El rol del SDR está viviendo una transformación profunda. El modelo de volumen ya no funciona.</p><h2>Habilidades clave</h2><p>Pensamiento estratégico, claridad en la comunicación, uso inteligente de la tecnología y adaptabilidad cultural.</p><h2>Conclusión</h2><p>El futuro del SDR es más inteligente, no más operativo.</p>'
+      }
+    ];
+
+    const stmt = db.prepare(
+      'INSERT INTO articles (title, content, excerpt, category, cover_image, author_id, author_name, published) VALUES (?,?,?,?,?,?,?,1)'
+    );
+    articles.forEach(a => stmt.run(a.title, a.content, a.excerpt, a.category, a.cover_image, authorId, 'Fernando Baccari'));
+    stmt.finalize(() => console.log('✅ 5 articoli auto-seeded'));
   });
 }
 
