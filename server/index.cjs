@@ -111,6 +111,12 @@ function createTables() {
       FOREIGN KEY(author_id) REFERENCES users(id)
     )`);
 
+    // Indice UNIQUE sul titolo — previene duplicati anche dopo redeploy
+    db.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_articles_title ON articles(title)`);
+
+    // Pulizia preventiva duplicati (per eventuali DB già sporchi)
+    db.run(`DELETE FROM articles WHERE id NOT IN (SELECT MIN(id) FROM articles GROUP BY title)`);
+
     console.log('All tables ready.');
     autoSeed();
   });
@@ -216,10 +222,10 @@ function seedArticles(authorId) {
     ];
 
     const stmt = db.prepare(
-      'INSERT INTO articles (title, content, excerpt, category, cover_image, author_id, author_name, published) VALUES (?,?,?,?,?,?,?,1)'
+      'INSERT OR IGNORE INTO articles (title, content, excerpt, category, cover_image, author_id, author_name, published) VALUES (?,?,?,?,?,?,?,1)'
     );
     articles.forEach(a => stmt.run(a.title, a.content, a.excerpt, a.category, a.cover_image, authorId, 'Fernando Baccari'));
-    stmt.finalize(() => console.log('✅ 4 articoli auto-seeded'));
+    stmt.finalize(() => console.log('✅ Seed articoli completato (INSERT OR IGNORE — nessun duplicato possibile)'));
   });
 }
 
