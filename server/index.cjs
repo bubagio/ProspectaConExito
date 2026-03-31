@@ -66,11 +66,11 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://accounts.google.com'],
+      scriptSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://accounts.google.com', 'https://www.googletagmanager.com'],
       styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-      imgSrc: ["'self'", 'data:', 'https:'],
-      connectSrc: ["'self'", 'https://prospectaexistov2-production.up.railway.app'],
+      imgSrc: ["'self'", 'data:', 'https:', 'https://www.google-analytics.com'],
+      connectSrc: ["'self'", 'https://prospectaexistov2-production.up.railway.app', 'https://www.google-analytics.com', 'https://analytics.google.com', 'https://www.googletagmanager.com'],
       frameSrc: ["'none'"],
       objectSrc: ["'none'"]
     }
